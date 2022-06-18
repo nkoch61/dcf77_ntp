@@ -1,0 +1,36 @@
+e=Environment(CC = 'avr-gcc',
+              CCFLAGS='-mmcu=atmega32 -std=gnu11 -O3 -mcall-prologues -g -mrelax -Wall -Wno-unused-function -Wno-missing-braces',
+              CPPDEFINES = ['F_CPU=4194304',
+                            'TIMER1PRESCALE=1024',
+                            'TIMER1VALUE_1S=4096',
+                            'TIMER1VALUE_2S=32768',
+                            'TIMER0PRESCALE=1024',
+                            'TIMER0CMPVALUE=64',
+                            'TIMER0USECS=15625',
+                            'FORMAT=2',                         # Hopf 6021
+                            'UART_CBUF_LEN=80' ],
+              LINKFLAGS='-mmcu=atmega32')
+elf=e.Program('dcf77.elf',
+              [ 'main.c',
+                'cmdint.c',
+                'switches.c',
+                'badint.c',
+                'uart.c',
+                'interrupt0.c',
+                'timer.c',
+                'timerint.c' ])
+hex=e.Command('dcf77.hex', elf, "avr-objcopy -j .text -j .data -O ihex $SOURCE $TARGET")
+e.Command('burn', hex,       "avrdude -c stk500v2 -P /dev/ttyACM0 -p m32 -v -U flash:w:$SOURCE")
+e.Command('uburn', hex,      "avrdude -c usbasp                   -p m32 -v -U flash:w:$SOURCE")
+e.Command('burnfuses', hex,  "avrdude -c stk500v2 -P /dev/ttyACM0 -p m32 -v -U lfuse:w:0xBF:m      -U hfuse:w:0xc9:m")
+e.Command('uburnfuses', hex, "avrdude -c usbasp                   -p m32 -v -U lfuse:w:0xBF:m      -U hfuse:w:0xc9:m")
+e.Command('readfuses', hex,  "avrdude -c stk500v2 -P /dev/ttyACM0 -p m32 -v -U lfuse:r:lfuse.hex:i -U hfuse:r:hfuse.hex:i")
+e.Command('ureadfuses', hex, "avrdude -c usbasp                   -p m32 -v -U lfuse:r:lfuse.hex:i -U hfuse:r:hfuse.hex:i")
+e.Command('verify', hex,     "avrdude -c stk500v2 -P /dev/ttyACM0 -p m32 -v -U flash:v:$SOURCE:i")
+e.Command('uverify', hex,    "avrdude -c usbasp                   -p m32 -v -U flash:v:$SOURCE:i")
+e.Command('read', [],        "avrdude -c stk500v2 -P /dev/ttyACM0 -p m32 -v -U flash:r:avrdude_readback.hex:i")
+e.Command('uread', [],       "avrdude -c usbasp                   -p m32 -v -U flash:r:avrdude_readback.hex:i")
+e.Command('erase', [],       "avrdude -c stk500v2 -P /dev/ttyACM0 -p m32 -F -v -e")
+e.Command('terminal', [],    "avrdude -c stk500v2 -P /dev/ttyACM0 -p m32 -F -v -t")
+e.Clean(hex, e.Glob ('*~'))
+e.Default(hex)
